@@ -119,6 +119,7 @@ func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 	marshaledBytes, err := marshaler.MarshalLogs(ld)
 	if err != nil {
 		ltp.logger.Error("error marshaling logs to protobuffers")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 
@@ -129,11 +130,13 @@ func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 	var processedBytes []byte
 	if err = nenv.CallStaticMethod("OtelJniProcessor", "processLogs", processedBytes, marshaledBytes); err != nil {
 		ltp.logger.Error("error callning Java method OtelJniProcessor/Processor.processLogs")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 
 	if err := jvm.DetachCurrentThread(); err != nil {
 		ltp.logger.Error("error detaching thread")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
@@ -142,6 +145,7 @@ func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 	ld2, err2 := unmarshaler.UnmarshalLogs(processedBytes)
 	if err2 != nil {
 		ltp.logger.Error("error unmarshaling from processedBytes protobuffers")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 
