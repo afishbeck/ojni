@@ -129,7 +129,7 @@ func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 
 	var processedBytes []byte
 	if err = nenv.CallStaticMethod("OtelJniProcessor", "processLogs", processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Error("error callning Java method OtelJniProcessor/Processor.processLogs")
+		ltp.logger.Info("error callning Java method OtelJniProcessor/Processor.processLogs")
 		ltp.logger.Error(err.Error())
 		return nil
 	}
@@ -194,7 +194,8 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 	marshaler := &ptrace.ProtoMarshaler{}
 	marshaledBytes, err := marshaler.MarshalTraces(traces)
 	if err != nil {
-		ltp.logger.Error("error marshaling traces to protobuffers")
+		ltp.logger.Info("error marshaling traces to protobuffers")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 
@@ -204,12 +205,14 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 
 	var processedBytes []byte
 	if err = nenv.CallStaticMethod("OtelJniProcessor", "processTraces", processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Error("error callning Java method OtelJniProcessor/Processor.processTraces")
+		ltp.logger.Info("error callning Java method OtelJniProcessor/Processor.processTraces")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 
 	if err := jvm.DetachCurrentThread(); err != nil {
-		ltp.logger.Error("error detaching thread")
+		ltp.logger.Info("error detaching thread")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
@@ -218,6 +221,7 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 	traces2, err2 := unmarshaler.UnmarshalTraces(processedBytes)
 	if err2 != nil {
 		ltp.logger.Error("error unmarshaling traces from processedBytes protobuffers")
+		ltp.logger.Error(err2.Error())
 		return nil
 	}
 
@@ -267,7 +271,8 @@ func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmet
 	marshaler := &pmetric.ProtoMarshaler{}
 	marshaledBytes, err := marshaler.MarshalMetrics(metrics)
 	if err != nil {
-		ltp.logger.Error("error marshaling metrics to protobuffers")
+		ltp.logger.Info("error marshaling metrics to protobuffers")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 
@@ -277,7 +282,8 @@ func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmet
 
 	var processedBytes []byte
 	if err = nenv.CallStaticMethod("OtelJniProcessor", "processMetrics", processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Error("error callning Java method OtelJniProcessor/Processor.processMetrics")
+		ltp.logger.Info("error callning Java method OtelJniProcessor/Processor.processMetrics")
+		ltp.logger.Error(err.Error())
 		return nil
 	}
 
