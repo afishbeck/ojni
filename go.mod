@@ -1,4 +1,4 @@
-module github.com/afishbeck/opentelemetry-collector-contrib/processor/jniprocessor
+module github.com/afishbeck/ojni
 
 go 1.19
 
