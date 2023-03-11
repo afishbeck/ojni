@@ -1,6 +1,4 @@
-package OtelJniProcessor;
-
-public class Processor
+public class OtelJniProcessor
 {
     int counter=0;
     public static byte[] processLogs(byte[] logdata)

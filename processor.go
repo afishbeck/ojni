@@ -127,7 +127,7 @@ func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 	nenv := jvm.AttachCurrentThread()
 
 	var processedBytes []byte
-	if err = nenv.CallStaticMethod("OtelJniProcessor/Processor", "processLogs", processedBytes, marshaledBytes); err != nil {
+	if err = nenv.CallStaticMethod("OtelJniProcessor", "processLogs", processedBytes, marshaledBytes); err != nil {
 		ltp.logger.Error("error callning Java method OtelJniProcessor/Processor.processLogs")
 		return nil
 	}
@@ -199,7 +199,7 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 	nenv := jvm.AttachCurrentThread()
 
 	var processedBytes []byte
-	if err = nenv.CallStaticMethod("OtelJniProcessor/Processor", "processTraces", processedBytes, marshaledBytes); err != nil {
+	if err = nenv.CallStaticMethod("OtelJniProcessor", "processTraces", processedBytes, marshaledBytes); err != nil {
 		ltp.logger.Error("error callning Java method OtelJniProcessor/Processor.processTraces")
 		return nil
 	}
@@ -272,7 +272,7 @@ func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmet
 	nenv := jvm.AttachCurrentThread()
 
 	var processedBytes []byte
-	if err = nenv.CallStaticMethod("OtelJniProcessor/Processor", "processMetrics", processedBytes, marshaledBytes); err != nil {
+	if err = nenv.CallStaticMethod("OtelJniProcessor", "processMetrics", processedBytes, marshaledBytes); err != nil {
 		ltp.logger.Error("error callning Java method OtelJniProcessor/Processor.processMetrics")
 		return nil
 	}
