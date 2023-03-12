@@ -150,6 +150,10 @@ func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 		return nil
 	}
 
+	jsonmarshaler := plog.JSONMarshaler{}
+	jsonret, _ := jsonmarshaler.MarshalLogs(ld2)
+	ltp.logger.Info("consumeLogs result", zap.String("json", string(jsonret)))
+
 	ld2.CopyTo(ld)
 	return nil
 }
@@ -226,10 +230,11 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 		return nil
 	}
 
-	traces.CopyTo(traces2)
 	jsonmarshaler := ptrace.JSONMarshaler{}
-	jsonout, err := jsonmarshaler.MarshalTraces(traces)
-	ltp.logger.Info("consumeTraces result", zap.String("json", string(jsonout)))
+	jsonret, _ := jsonmarshaler.MarshalTraces(traces2)
+	ltp.logger.Info("consumeLogs result", zap.String("json", string(jsonret)))
+
+	traces2.CopyTo(traces)
 
 	return nil
 }
@@ -304,6 +309,10 @@ func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmet
 		ltp.logger.Error("error unmarshaling metrics from processedBytes protobuffers")
 		return nil
 	}
+
+	jsonmarshaler := pmetric.JSONMarshaler{}
+	jsonret, _ := jsonmarshaler.MarshalMetrics(metrics2)
+	ltp.logger.Info("consumeMetrics result", zap.String("json", string(jsonret)))
 
 	metrics2.CopyTo(metrics)
 	return nil
