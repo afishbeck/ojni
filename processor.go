@@ -227,6 +227,10 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 	}
 
 	traces.CopyTo(traces2)
+	jsonmarshaler := ptrace.JSONMarshaler{}
+	jsonout, err := jsonmarshaler.MarshalTraces(traces)
+	ltp.logger.Info("consumeTraces result", zap.String("json", string(jsonout)))
+
 	return nil
 }
 
