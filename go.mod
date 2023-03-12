@@ -3,7 +3,7 @@ module github.com/afishbeck/ojni
 go 1.19
 
 require (
-	github.com/afishbeck/jnigi v0.0.0dev1
+	github.com/afishbeck/jnigi v0.0.1dev
 	go.opentelemetry.io/collector v0.73.0
 	go.opentelemetry.io/collector/component v0.73.0
 	go.opentelemetry.io/collector/consumer v0.73.0
