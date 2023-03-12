@@ -1,0 +1,29 @@
+receivers:
+    otlp:
+        protocols:
+            grpc:
+            http:
+
+exporters:
+    logging:
+        loglevel: debug
+
+processors:
+    jni:
+
+service:
+    telemetry:
+        metrics:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        exporters: [logging]
+        processors: [jni]
+      metrics:
+        receivers: [otlp]
+        processors: [jni]
+        exporters: [logging]
+      logs:
+        receivers: [otlp]
+        processors: [jni]
+        exporters: [logging]
