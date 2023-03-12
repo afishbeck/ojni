@@ -45,7 +45,8 @@ func init() {
 	}
 
 	runtime.LockOSThread()
-	jvm2, _, err := jnigi.CreateJVM(jnigi.NewJVMInitArgs(false, true, jnigi.DEFAULT_VERSION, []string{"-Xcheck:jni", "-Djava.class.path=.;./lib-all.jar"}))
+	jvm2, _, err := jnigi.CreateJVM(jnigi.NewJVMInitArgs(false, true, jnigi.DEFAULT_VERSION, []string{"-Djava.class.path=/home/tony/otel/otelcol-dev/lib-all.jar", "-Xcheck:jni"}))
+
 	if err != nil {
 		log.Fatal(err)
 	}
