@@ -129,8 +129,8 @@ func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) erro
 	nenv := jvm.AttachCurrentThread()
 
 	var processedBytes []byte
-	if err = nenv.CallStaticMethod("ojnilib.Library", "processLogs", &processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Info("error callning Java method ojnilib.Library.processLogs")
+	if err = nenv.CallStaticMethod("ojnilib/Library", "processLogs", &processedBytes, marshaledBytes); err != nil {
+		ltp.logger.Info("error callning Java method ojnilib/Library.processLogs")
 		ltp.logger.Error(err.Error())
 		return nil
 	}
@@ -205,8 +205,8 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 	nenv := jvm.AttachCurrentThread()
 
 	var processedBytes []byte
-	if err = nenv.CallStaticMethod("ojnilib.Library", "processTraces", &processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Info("error callning Java method ojnilib.Library.processTraces")
+	if err = nenv.CallStaticMethod("ojnilib/Library", "processTraces", &processedBytes, marshaledBytes); err != nil {
+		ltp.logger.Info("error callning Java method ojnilib/Library.processTraces")
 		ltp.logger.Error(err.Error())
 		return nil
 	}
@@ -286,8 +286,8 @@ func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmet
 	nenv := jvm.AttachCurrentThread()
 
 	var processedBytes []byte
-	if err = nenv.CallStaticMethod("ojnilib.Library", "processMetrics", &processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Info("error callning Java method ojnilib.Library.processMetrics")
+	if err = nenv.CallStaticMethod("ojnilib/Library", "processMetrics", &processedBytes, marshaledBytes); err != nil {
+		ltp.logger.Info("error callning Java method ojnilib/Library.processMetrics")
 		ltp.logger.Error(err.Error())
 		return nil
 	}
