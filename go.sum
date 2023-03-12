@@ -1,8 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/afishbeck/jnigi v0.0.0-20230311222824-fd88d5b98cef h1:TZFS9GYGaZetifmHghub+ZkPDYOM2H8BM43izOo1xWA=
-github.com/afishbeck/jnigi v0.0.0-20230311222824-fd88d5b98cef/go.mod h1:Vp5MUTibvxb6w6zIWC9hzEg5ON5PZPkS0TsOIyDSvaI=
+github.com/afishbeck/jnigi v0.0.0 h1:wnlTYNTbwW6lS/eXiypvqhbhoLhT9xTOAgV97aKZxjs=
+github.com/afishbeck/jnigi v0.0.0/go.mod h1:Vp5MUTibvxb6w6zIWC9hzEg5ON5PZPkS0TsOIyDSvaI=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
