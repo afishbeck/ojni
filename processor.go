@@ -16,7 +16,6 @@ package jniprocessor // import "github.com/afishbeck/opentelemetry-collector-con
 
 import (
 	"context"
-	"errors"
 	"log"
 	"runtime"
 
@@ -27,14 +26,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/processorhelper"
 	"go.uber.org/zap"
-)
-
-const (
-	// The value of "type" key in configuration.
-	typeStr = "jni"
-	// The stability level of the processor.
-	stability = component.StabilityLevelDevelopment
 )
 
 var jvm *jnigi.JVM
@@ -55,6 +48,15 @@ func init() {
 	runtime.UnlockOSThread()
 }
 
+const (
+	// The value of "type" key in configuration.
+	typeStr = "jni"
+	// The stability level of the processor.
+	stability = component.StabilityLevelDevelopment
+)
+
+var processorCapabilities = consumer.Capabilities{MutatesData: true}
+
 func NewFactory() processor.Factory {
 	return processor.NewFactory(
 		typeStr,
@@ -66,7 +68,7 @@ func NewFactory() processor.Factory {
 }
 
 type Config struct {
-	jarpath string
+	test string
 }
 
 func createDefaultConfig() component.Config {
@@ -78,130 +80,63 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func createLogsProcessor(ctx context.Context, set processor.CreateSettings, cfg component.Config, lgcon consumer.Logs) (processor.Logs, error) {
-	pConfig := cfg.(*Config)
-	return newLogProcessor(pConfig, lgcon, set.Logger)
+type jniProcessor struct {
+	logger *zap.Logger
 }
 
-type logsJniProcessor struct {
-	logger       *zap.Logger
-	config       *Config
-	nextConsumer consumer.Logs
+func createTracesProcessor(
+	ctx context.Context,
+	set processor.CreateSettings,
+	cfg component.Config,
+	nextConsumer consumer.Traces) (processor.Traces, error) {
+
+	proc := &jniProcessor{logger: set.logger}
+	return processorhelper.NewTracesProcessor(
+		ctx,
+		set,
+		cfg,
+		nextConsumer,
+		proc.processTraces,
+		processorhelper.WithCapabilities(processorCapabilities))
 }
 
-func newLogProcessor(config *Config, nextConsumer consumer.Logs, logger *zap.Logger) (*logsJniProcessor, error) {
-	if config.jarpath == "fail" {
-		return nil, errors.New("you wanted to fail")
-	}
-	p := &logsJniProcessor{
-		logger:       logger,
-		config:       config,
-		nextConsumer: nextConsumer,
-	}
-	return p, nil
+func createMetricsProcessor(
+	ctx context.Context,
+	set processor.CreateSettings,
+	cfg component.Config,
+	nextConsumer consumer.Metrics) (processor.Metrics, error) {
+	proc := &jniProcessor{logger: set.Logger}
+	return processorhelper.NewMetricsProcessor(
+		ctx,
+		set,
+		cfg,
+		nextConsumer,
+		proc.processMetrics,
+		processorhelper.WithCapabilities(processorCapabilities))
 }
 
-func (ltp *logsJniProcessor) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: true}
+func createLogsProcessor(
+	ctx context.Context,
+	set processor.CreateSettings,
+	cfg component.Config,
+	nextConsumer consumer.Logs) (processor.Logs, error) {
+	proc := &jniProcessor{logger: set.logger}
+	return processorhelper.NewLogsProcessor(
+		ctx,
+		set,
+		cfg,
+		nextConsumer,
+		proc.processLogs,
+		processorhelper.WithCapabilities(processorCapabilities))
 }
 
-func (ltp *logsJniProcessor) Shutdown(ctx context.Context) error {
-	ltp.logger.Info("Stopping logs jni processor")
-	return nil
-}
-
-func (ltp *logsJniProcessor) Start(ctx context.Context, host component.Host) error {
-	ltp.logger.Info("Starting logs jni processor")
-	return nil
-}
-
-func (ltp *logsJniProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	marshaler := &plog.ProtoMarshaler{}
-	marshaledBytes, err := marshaler.MarshalLogs(ld)
-	if err != nil {
-		ltp.logger.Error("error marshaling logs to protobuffers")
-		ltp.logger.Error(err.Error())
-		return nil
-	}
-
-	// hopefully the concurrency can be optimized.. need to investigate processor threading later
-	runtime.LockOSThread()
-	nenv := jvm.AttachCurrentThread()
-
-	var processedBytes []byte
-	if err = nenv.CallStaticMethod("ojnilib/Library", "processLogs", &processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Info("error callning Java method ojnilib/Library.processLogs")
-		ltp.logger.Error(err.Error())
-		return nil
-	}
-
-	if err := jvm.DetachCurrentThread(); err != nil {
-		ltp.logger.Error("error detaching thread")
-		ltp.logger.Error(err.Error())
-		return nil
-	}
-	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
-
-	unmarshaler := &plog.ProtoUnmarshaler{}
-	ld2, err2 := unmarshaler.UnmarshalLogs(processedBytes)
-	if err2 != nil {
-		ltp.logger.Error("error unmarshaling from processedBytes protobuffers")
-		ltp.logger.Error(err.Error())
-		return nil
-	}
-
-	jsonmarshaler := plog.JSONMarshaler{}
-	jsonret, _ := jsonmarshaler.MarshalLogs(ld2)
-	ltp.logger.Info("consumeLogs result", zap.String("json", string(jsonret)))
-
-	ld2.CopyTo(ld)
-	return nil
-}
-
-func createTracesProcessor(ctx context.Context, set processor.CreateSettings, cfg component.Config, trcon consumer.Traces) (processor.Traces, error) {
-	pConfig := cfg.(*Config)
-	return newTracesProcessor(pConfig, trcon, set.Logger)
-}
-
-type tracesJniProcessor struct {
-	logger       *zap.Logger
-	config       *Config
-	nextConsumer consumer.Traces
-}
-
-func newTracesProcessor(config *Config, nextConsumer consumer.Traces, logger *zap.Logger) (*tracesJniProcessor, error) {
-	if config.jarpath == "fail" {
-		return nil, errors.New("you wanted to fail")
-	}
-	p := &tracesJniProcessor{
-		logger:       logger,
-		config:       config,
-		nextConsumer: nextConsumer,
-	}
-	return p, nil
-}
-
-func (ltp *tracesJniProcessor) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: true}
-}
-
-func (ltp *tracesJniProcessor) Shutdown(ctx context.Context) error {
-	ltp.logger.Info("Stopping traces jni processor")
-	return nil
-}
-
-func (ltp *tracesJniProcessor) Start(ctx context.Context, host component.Host) error {
-	ltp.logger.Info("Starting traces jni processor")
-	return nil
-}
-
-func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.Traces) error {
+func (ltp *jniProcessor) processTraces(ctx context.Context, traces ptrace.Traces) (ptrace.Traces, error) {
 	marshaler := &ptrace.ProtoMarshaler{}
 	marshaledBytes, err := marshaler.MarshalTraces(traces)
 	if err != nil {
 		ltp.logger.Info("error marshaling traces to protobuffers")
 		ltp.logger.Error(err.Error())
-		return nil
+		return traces, nil
 	}
 
 	// hopefully the concurrency can be optimized.. need to investigate processor threading later
@@ -212,13 +147,13 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 	if err = nenv.CallStaticMethod("ojnilib/Library", "processTraces", &processedBytes, marshaledBytes); err != nil {
 		ltp.logger.Info("error callning Java method ojnilib/Library.processTraces")
 		ltp.logger.Error(err.Error())
-		return nil
+		return traces, nil
 	}
 
 	if err := jvm.DetachCurrentThread(); err != nil {
 		ltp.logger.Info("error detaching thread")
 		ltp.logger.Error(err.Error())
-		return nil
+		return traces, nil
 	}
 	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
 
@@ -227,63 +162,25 @@ func (ltp *tracesJniProcessor) ConsumeTraces(ctx context.Context, traces ptrace.
 	if err2 != nil {
 		ltp.logger.Error("error unmarshaling traces from processedBytes protobuffers")
 		ltp.logger.Error(err2.Error())
-		return nil
+		return traces, nil
 	}
 
 	jsonmarshaler := ptrace.JSONMarshaler{}
 	jsonret, _ := jsonmarshaler.MarshalTraces(traces2)
 	ltp.logger.Info("consumeLogs result", zap.String("json", string(jsonret)))
 
-	traces2.CopyTo(traces)
+	//traces2.CopyTo(traces)
 
-	return nil
+	return traces2, nil
 }
 
-func createMetricsProcessor(ctx context.Context, set processor.CreateSettings, cfg component.Config, mtcon consumer.Metrics) (processor.Metrics, error) {
-	pConfig := cfg.(*Config)
-	return newMetricsProcessor(pConfig, mtcon, set.Logger)
-}
-
-type metricsJniProcessor struct {
-	logger       *zap.Logger
-	config       *Config
-	nextConsumer consumer.Metrics
-}
-
-func newMetricsProcessor(config *Config, nextConsumer consumer.Metrics, logger *zap.Logger) (*metricsJniProcessor, error) {
-	if config.jarpath == "fail" {
-		return nil, errors.New("you wanted to fail")
-	}
-	p := &metricsJniProcessor{
-		logger:       logger,
-		config:       config,
-		nextConsumer: nextConsumer,
-	}
-
-	return p, nil
-}
-
-func (ltp *metricsJniProcessor) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: true}
-}
-
-func (ltp *metricsJniProcessor) Shutdown(ctx context.Context) error {
-	ltp.logger.Info("Stopping traces jni processor")
-	return nil
-}
-
-func (ltp *metricsJniProcessor) Start(ctx context.Context, host component.Host) error {
-	ltp.logger.Info("Starting traces jni processor")
-	return nil
-}
-
-func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmetric.Metrics) error {
+func (ltp *jniProcessor) processMetrics(ctx context.Context, metrics pmetric.Metrics) (pmetric.Metrics, error) {
 	marshaler := &pmetric.ProtoMarshaler{}
 	marshaledBytes, err := marshaler.MarshalMetrics(metrics)
 	if err != nil {
 		ltp.logger.Info("error marshaling metrics to protobuffers")
 		ltp.logger.Error(err.Error())
-		return nil
+		return metrics, nil
 	}
 
 	// hopefully the concurrency can be optimized.. need to investigate processor threading later
@@ -294,12 +191,12 @@ func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmet
 	if err = nenv.CallStaticMethod("ojnilib/Library", "processMetrics", &processedBytes, marshaledBytes); err != nil {
 		ltp.logger.Info("error callning Java method ojnilib/Library.processMetrics")
 		ltp.logger.Error(err.Error())
-		return nil
+		return metrics, nil
 	}
 
 	if err := jvm.DetachCurrentThread(); err != nil {
 		ltp.logger.Error("error detaching thread")
-		return nil
+		return metrics, nil
 	}
 	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
 
@@ -307,13 +204,56 @@ func (ltp *metricsJniProcessor) ConsumeMetrics(ctx context.Context, metrics pmet
 	metrics2, err2 := unmarshaler.UnmarshalMetrics(processedBytes)
 	if err2 != nil {
 		ltp.logger.Error("error unmarshaling metrics from processedBytes protobuffers")
-		return nil
+		return metrics, nil
 	}
 
 	jsonmarshaler := pmetric.JSONMarshaler{}
 	jsonret, _ := jsonmarshaler.MarshalMetrics(metrics2)
 	ltp.logger.Info("consumeMetrics result", zap.String("json", string(jsonret)))
 
-	metrics2.CopyTo(metrics)
-	return nil
+	//metrics2.CopyTo(metrics)
+	return metrics2, nil
+}
+
+func (ltp *jniProcessor) processLogs(ctx context.Context, ld plog.Logs) (plog.Logs, error) {
+	marshaler := &plog.ProtoMarshaler{}
+	marshaledBytes, err := marshaler.MarshalLogs(ld)
+	if err != nil {
+		ltp.logger.Error("error marshaling logs to protobuffers")
+		ltp.logger.Error(err.Error())
+		return ld, nil
+	}
+
+	// hopefully the concurrency can be optimized.. need to investigate processor threading later
+	runtime.LockOSThread()
+	nenv := jvm.AttachCurrentThread()
+
+	var processedBytes []byte
+	if err = nenv.CallStaticMethod("ojnilib/Library", "processLogs", &processedBytes, marshaledBytes); err != nil {
+		ltp.logger.Info("error callning Java method ojnilib/Library.processLogs")
+		ltp.logger.Error(err.Error())
+		return ld, nil
+	}
+
+	if err := jvm.DetachCurrentThread(); err != nil {
+		ltp.logger.Error("error detaching thread")
+		ltp.logger.Error(err.Error())
+		return ld, nil
+	}
+	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
+
+	unmarshaler := &plog.ProtoUnmarshaler{}
+	ld2, err2 := unmarshaler.UnmarshalLogs(processedBytes)
+	if err2 != nil {
+		ltp.logger.Error("error unmarshaling from processedBytes protobuffers")
+		ltp.logger.Error(err.Error())
+		return ld, nil
+	}
+
+	jsonmarshaler := plog.JSONMarshaler{}
+	jsonret, _ := jsonmarshaler.MarshalLogs(ld2)
+	ltp.logger.Info("consumeLogs result", zap.String("json", string(jsonret)))
+
+	//ld2.CopyTo(ld)
+	return ld2, nil
 }
