@@ -90,7 +90,7 @@ func createTracesProcessor(
 	cfg component.Config,
 	nextConsumer consumer.Traces) (processor.Traces, error) {
 
-	proc := &jniProcessor{logger: set.logger}
+	proc := &jniProcessor{logger: set.Logger}
 	return processorhelper.NewTracesProcessor(
 		ctx,
 		set,
@@ -120,7 +120,7 @@ func createLogsProcessor(
 	set processor.CreateSettings,
 	cfg component.Config,
 	nextConsumer consumer.Logs) (processor.Logs, error) {
-	proc := &jniProcessor{logger: set.logger}
+	proc := &jniProcessor{logger: set.Logger}
 	return processorhelper.NewLogsProcessor(
 		ctx,
 		set,
