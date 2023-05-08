@@ -167,52 +167,11 @@ func (ltp *jniProcessor) processTraces(ctx context.Context, traces ptrace.Traces
 
 	jsonmarshaler := ptrace.JSONMarshaler{}
 	jsonret, _ := jsonmarshaler.MarshalTraces(traces2)
-	ltp.logger.Info("consumeLogs result", zap.String("json", string(jsonret)))
+	ltp.logger.Info("processTraces result", zap.String("json", string(jsonret)))
 
 	//traces2.CopyTo(traces)
 
 	return traces2, nil
-}
-
-func (ltp *jniProcessor) processMetrics(ctx context.Context, metrics pmetric.Metrics) (pmetric.Metrics, error) {
-	marshaler := &pmetric.ProtoMarshaler{}
-	marshaledBytes, err := marshaler.MarshalMetrics(metrics)
-	if err != nil {
-		ltp.logger.Info("error marshaling metrics to protobuffers")
-		ltp.logger.Error(err.Error())
-		return metrics, nil
-	}
-
-	// hopefully the concurrency can be optimized.. need to investigate processor threading later
-	runtime.LockOSThread()
-	nenv := jvm.AttachCurrentThread()
-
-	var processedBytes []byte
-	if err = nenv.CallStaticMethod("ojnilib/Library", "processMetrics", &processedBytes, marshaledBytes); err != nil {
-		ltp.logger.Info("error callning Java method ojnilib/Library.processMetrics")
-		ltp.logger.Error(err.Error())
-		return metrics, nil
-	}
-
-	if err := jvm.DetachCurrentThread(); err != nil {
-		ltp.logger.Error("error detaching thread")
-		return metrics, nil
-	}
-	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
-
-	unmarshaler := &pmetric.ProtoUnmarshaler{}
-	metrics2, err2 := unmarshaler.UnmarshalMetrics(processedBytes)
-	if err2 != nil {
-		ltp.logger.Error("error unmarshaling metrics from processedBytes protobuffers")
-		return metrics, nil
-	}
-
-	jsonmarshaler := pmetric.JSONMarshaler{}
-	jsonret, _ := jsonmarshaler.MarshalMetrics(metrics2)
-	ltp.logger.Info("consumeMetrics result", zap.String("json", string(jsonret)))
-
-	//metrics2.CopyTo(metrics)
-	return metrics2, nil
 }
 
 func (ltp *jniProcessor) processLogs(ctx context.Context, ld plog.Logs) (plog.Logs, error) {
@@ -252,8 +211,49 @@ func (ltp *jniProcessor) processLogs(ctx context.Context, ld plog.Logs) (plog.Lo
 
 	jsonmarshaler := plog.JSONMarshaler{}
 	jsonret, _ := jsonmarshaler.MarshalLogs(ld2)
-	ltp.logger.Info("consumeLogs result", zap.String("json", string(jsonret)))
+	ltp.logger.Info("processLogs result", zap.String("json", string(jsonret)))
 
 	//ld2.CopyTo(ld)
 	return ld2, nil
+}
+
+func (ltp *jniProcessor) processMetrics(ctx context.Context, metrics pmetric.Metrics) (pmetric.Metrics, error) {
+	marshaler := &pmetric.ProtoMarshaler{}
+	marshaledBytes, err := marshaler.MarshalMetrics(metrics)
+	if err != nil {
+		ltp.logger.Info("error marshaling metrics to protobuffers")
+		ltp.logger.Error(err.Error())
+		return metrics, nil
+	}
+
+	// hopefully the concurrency can be optimized.. need to investigate processor threading later
+	runtime.LockOSThread()
+	nenv := jvm.AttachCurrentThread()
+
+	var processedBytes []byte
+	if err = nenv.CallStaticMethod("ojnilib/Library", "processMetrics", &processedBytes, marshaledBytes); err != nil {
+		ltp.logger.Info("error callning Java method ojnilib/Library.processMetrics")
+		ltp.logger.Error(err.Error())
+		return metrics, nil
+	}
+
+	if err := jvm.DetachCurrentThread(); err != nil {
+		ltp.logger.Error("error detaching thread")
+		return metrics, nil
+	}
+	runtime.UnlockOSThread() // need to investigate how this interacts with the rest of the pipeline
+
+	unmarshaler := &pmetric.ProtoUnmarshaler{}
+	metrics2, err2 := unmarshaler.UnmarshalMetrics(processedBytes)
+	if err2 != nil {
+		ltp.logger.Error("error unmarshaling metrics from processedBytes protobuffers")
+		return metrics, nil
+	}
+
+	jsonmarshaler := pmetric.JSONMarshaler{}
+	jsonret, _ := jsonmarshaler.MarshalMetrics(metrics2)
+	ltp.logger.Info("processMetrics result", zap.String("json", string(jsonret)))
+
+	//metrics2.CopyTo(metrics)
+	return metrics2, nil
 }
